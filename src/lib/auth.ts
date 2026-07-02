@@ -11,6 +11,8 @@ function allowedEmails(): string[] {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Confía en el host detrás de un proxy (Vercel/producción) para el callback.
+  trustHost: true,
   // App de un solo usuario: sesión persistente de larga duración (1 año),
   // así no hay que volver a iniciar sesión constantemente.
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 365 },
