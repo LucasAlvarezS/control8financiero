@@ -9,13 +9,20 @@ export interface CategorySlice {
   color: string;
 }
 
-export function CategoryDonut({ data }: { data: CategorySlice[] }) {
+export function CategoryDonut({
+  data,
+  variant = "donut",
+}: {
+  data: CategorySlice[];
+  variant?: "donut" | "pie";
+}) {
   const total = data.reduce((acc, d) => acc + d.value, 0);
+  const isPie = variant === "pie";
 
   if (total === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        Todavía no hay gastos registrados este mes.
+        Todavía no hay gastos registrados en este período.
       </p>
     );
   }
@@ -29,9 +36,9 @@ export function CategoryDonut({ data }: { data: CategorySlice[] }) {
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={54}
+              innerRadius={isPie ? 0 : 54}
               outerRadius={80}
-              paddingAngle={2}
+              paddingAngle={isPie ? 1 : 2}
               stroke="var(--card)"
               strokeWidth={2}
             >
@@ -41,13 +48,21 @@ export function CategoryDonut({ data }: { data: CategorySlice[] }) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[11px] text-muted-foreground">Total</span>
-          <span className="text-sm font-semibold">{formatCLP(total)}</span>
-        </div>
+        {!isPie && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[11px] text-muted-foreground">Total</span>
+            <span className="text-sm font-semibold">{formatCLP(total)}</span>
+          </div>
+        )}
       </div>
 
       <ul className="flex w-full flex-col gap-2">
+        {isPie && (
+          <li className="flex items-center justify-between gap-2 border-b pb-2 text-sm">
+            <span className="text-muted-foreground">Total del período</span>
+            <span className="font-semibold tabular-nums">{formatCLP(total)}</span>
+          </li>
+        )}
         {data.map((slice) => (
           <li key={slice.name} className="flex items-center justify-between gap-2 text-sm">
             <span className="flex items-center gap-2">

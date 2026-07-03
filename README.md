@@ -66,12 +66,21 @@ protegidos con el header `Authorization: Bearer $CRON_SECRET`. El workflow
 GitHub Actions `APP_BASE_URL` y `CRON_SECRET` (configurarlos en Settings →
 Secrets del repositorio una vez desplegada la app).
 
+## Webhooks
+
+`/api/webhooks/mercadopago` y `/api/webhooks/fintoc` validan la firma de cada
+notificación entrante (header `x-signature` de Mercado Pago y `Fintoc-Signature`
+de Fintoc) usando `MERCADOPAGO_WEBHOOK_SECRET` y `FINTOC_WEBHOOK_SECRET`. Esos
+secretos se obtienen al configurar el webhook en el panel de cada proveedor. Si
+el secreto no está configurado, las notificaciones se rechazan con 401.
+
 ## Notas sobre integraciones bancarias
 
 - **Banco Falabella** no está soportado por el producto Movements de Fintoc
   (sólo para iniciar pagos), por lo que no está incluido como cuenta
   conectable automáticamente.
-- Los nombres de endpoints/campos de la API de Fintoc en
-  `src/lib/integrations/fintoc/` siguen su documentación pública, pero
-  conviene verificarlos contra la referencia vigente de Fintoc antes de
-  conectar credenciales reales de producción.
+- La integración de Fintoc (`src/lib/integrations/fintoc/`) implementa el
+  [flujo con exchange token](https://docs.fintoc.com/docs/integration-with-exchange-token):
+  el backend crea un link intent (`POST /v1/link_intents`), el widget devuelve
+  un `exchangeToken` y el backend lo canjea (`GET /v1/links/exchange`) por el
+  `link_token`, que se guarda cifrado y se usa para leer movimientos.

@@ -1,4 +1,6 @@
 const MP_API_BASE = "https://api.mercadopago.com";
+// La autorización OAuth usa el dominio regional (Chile), no api.mercadopago.com.
+const MP_AUTH_BASE = "https://auth.mercadopago.cl";
 
 interface OAuthTokenResponse {
   access_token: string;
@@ -15,7 +17,7 @@ export function buildAuthorizationUrl(state: string): string {
     throw new Error("Faltan MERCADOPAGO_CLIENT_ID / MERCADOPAGO_REDIRECT_URI");
   }
 
-  const url = new URL(`${MP_API_BASE}/authorization`);
+  const url = new URL(`${MP_AUTH_BASE}/authorization`);
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("platform_id", "mp");
@@ -74,28 +76,42 @@ export interface MpPayment {
   payer?: { email?: string };
 }
 
+const SEARCH_PAGE_SIZE = 50;
+// Tope de seguridad: 20 páginas = 1000 pagos por sync.
+const SEARCH_MAX_PAGES = 20;
+
 export async function searchPayments(
   accessToken: string,
   sinceIso: string | null,
 ): Promise<MpPayment[]> {
-  const url = new URL(`${MP_API_BASE}/v1/payments/search`);
-  url.searchParams.set("sort", "date_created");
-  url.searchParams.set("criteria", "desc");
-  url.searchParams.set("limit", "50");
-  if (sinceIso) {
-    url.searchParams.set("range", "date_created");
-    url.searchParams.set("begin_date", sinceIso);
-    url.searchParams.set("end_date", "NOW");
+  const payments: MpPayment[] = [];
+
+  for (let page = 0; page < SEARCH_MAX_PAGES; page++) {
+    const url = new URL(`${MP_API_BASE}/v1/payments/search`);
+    url.searchParams.set("sort", "date_created");
+    url.searchParams.set("criteria", "desc");
+    url.searchParams.set("limit", String(SEARCH_PAGE_SIZE));
+    url.searchParams.set("offset", String(page * SEARCH_PAGE_SIZE));
+    if (sinceIso) {
+      url.searchParams.set("range", "date_created");
+      url.searchParams.set("begin_date", sinceIso);
+      url.searchParams.set("end_date", "NOW");
+    }
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error consultando pagos de Mercado Pago: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const results: MpPayment[] = data.results ?? [];
+    payments.push(...results);
+
+    if (results.length < SEARCH_PAGE_SIZE) break;
   }
 
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Error consultando pagos de Mercado Pago: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.results ?? [];
+  return payments;
 }

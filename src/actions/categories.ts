@@ -4,11 +4,21 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session";
+import { CATEGORY_ICON_SLUGS } from "@/lib/category-style";
 
 const categoryInputSchema = z.object({
   name: z.string().min(1),
-  icon: z.string().optional(),
-  color: z.string().optional(),
+  icon: z
+    .string()
+    .refine(
+      (slug) => (CATEGORY_ICON_SLUGS as readonly string[]).includes(slug),
+      "Ícono desconocido",
+    )
+    .optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/i, "Color inválido")
+    .optional(),
   parentId: z.string().optional(),
 });
 

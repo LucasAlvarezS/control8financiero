@@ -21,6 +21,6 @@ export default auth((request) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/webhooks|api/cron|_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|sw.js).*)",
+    "/((?!api/auth|api/webhooks|api/cron|api/widget|_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|sw.js).*)",
   ],
 };

@@ -19,11 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { createManualTransaction } from "@/actions/transactions";
 
 interface Option {
   id: string;
   label: string;
+  icon?: string | null;
+  color?: string | null;
 }
 
 export function AddTransactionDialog({
@@ -104,6 +107,7 @@ export function AddTransactionDialog({
               <SelectContent>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
+                    <CategoryIcon icon={category.icon} color={category.color} size={15} />
                     {category.label}
                   </SelectItem>
                 ))}

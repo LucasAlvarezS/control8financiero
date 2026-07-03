@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireUserId } from "@/lib/session";
+import { auth } from "@/lib/auth";
 import { exchangeCodeForToken } from "@/lib/integrations/mercadopago/client";
 import { mercadoPagoProvider } from "@/lib/integrations/mercadopago/sync";
 
 export async function GET(request: NextRequest) {
-  const userId = await requireUserId();
+  // Si la sesión expiró mientras el usuario autorizaba en MP, se lo manda a
+  // loguearse de nuevo en vez de responder 500.
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
+  }
 
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");

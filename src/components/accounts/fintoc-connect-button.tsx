@@ -3,23 +3,42 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-// Integra el widget hospedado de Fintoc (https://docs.fintoc.com). El nombre
-// exacto del script/objeto global puede variar entre versiones de su SDK;
-// conviene verificarlo contra la documentación vigente antes de conectar
-// credenciales reales de producción.
+// Widget hospedado de Fintoc: https://docs.fintoc.com/docs/web-integration.
+// El script expone el objeto global `Fintoc`; el onSuccess recibe el link
+// intent con un exchangeToken que el backend canjea por el link_token.
+interface FintocLinkIntent {
+  exchangeToken: string;
+}
+
+interface FintocWidget {
+  open: () => void;
+  destroy: () => void;
+}
+
 declare global {
   interface Window {
-    FintocWidget?: {
-      open: (opts: { widgetToken: string; onSuccess: (linkToken: string) => void }) => void;
+    Fintoc?: {
+      create: (options: {
+        publicKey: string;
+        widgetToken: string;
+        institutionId?: string;
+        onSuccess: (linkIntent: FintocLinkIntent) => void;
+        onExit?: () => void;
+      }) => FintocWidget;
     };
   }
 }
 
 const SCRIPT_SRC = "https://js.fintoc.com/v1/";
 
+const FINTOC_INSTITUTION_ID: Record<string, string> = {
+  BANCO_ESTADO: "cl_banco_estado",
+  BANCO_DE_CHILE: "cl_banco_de_chile",
+};
+
 function loadFintocScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.FintocWidget) {
+    if (window.Fintoc) {
       resolve();
       return;
     }
@@ -45,24 +64,27 @@ export function FintocConnectButton({
     try {
       const response = await fetch("/api/integrations/fintoc/widget-token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ institution }),
       });
-      const { widgetToken } = await response.json();
+      if (!response.ok) throw new Error("No se pudo crear el link intent");
+      const { widgetToken, publicKey } = await response.json();
 
       await loadFintocScript();
-      window.FintocWidget?.open({
+      const widget = window.Fintoc?.create({
+        publicKey,
         widgetToken,
-        onSuccess: async (linkToken: string) => {
+        institutionId: FINTOC_INSTITUTION_ID[institution],
+        onSuccess: async (linkIntent) => {
           await fetch("/api/integrations/fintoc/callback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ linkToken, institution }),
+            body: JSON.stringify({ exchangeToken: linkIntent.exchangeToken }),
           });
           window.location.href = "/accounts";
         },
+        onExit: () => setLoading(false),
       });
-    } finally {
+      widget?.open();
+    } catch {
       setLoading(false);
     }
   }

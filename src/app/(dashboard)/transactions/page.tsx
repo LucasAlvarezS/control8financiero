@@ -71,7 +71,12 @@ export default async function TransactionsPage({
   });
 
   const accountOptions = accounts.map((a) => ({ id: a.id, label: a.alias }));
-  const categoryOptions = categories.map((c) => ({ id: c.id, label: c.name }));
+  const categoryOptions = categories.map((c) => ({
+    id: c.id,
+    label: c.name,
+    icon: c.icon,
+    color: c.color,
+  }));
 
   return (
     <div className="flex flex-col gap-6">

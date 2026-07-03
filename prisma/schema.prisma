@@ -75,6 +75,8 @@ model FinancialAccount {
   alias        String
   currency     String          @default("CLP")
   isSavings    Boolean         @default(false)
+  balance          Decimal?
+  balanceUpdatedAt DateTime?
   lastSyncedAt DateTime?
   status       AccountStatus   @default(ACTIVE)
   createdAt    DateTime        @default(now())

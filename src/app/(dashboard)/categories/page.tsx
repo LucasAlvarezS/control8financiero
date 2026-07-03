@@ -3,7 +3,9 @@ import { requireUserId } from "@/lib/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddCategoryForm } from "@/components/categories/add-category-form";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { DeleteCategoryButton } from "@/components/categories/delete-category-button";
+import { EditCategoryDialog } from "@/components/categories/edit-category-dialog";
 import { DeleteRuleButton } from "@/components/categories/delete-rule-button";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -45,12 +47,23 @@ export default async function CategoriesPage() {
                   className="gap-2 py-1.5 pr-1"
                   style={{ borderColor: category.color ?? undefined }}
                 >
-                  <span
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ backgroundColor: category.color ?? "#94a3b8" }}
+                  <CategoryIcon
+                    icon={category.icon}
+                    color={category.color ?? "#94a3b8"}
+                    size={14}
                   />
                   {category.name}
-                  {!category.isDefault && <DeleteCategoryButton categoryId={category.id} />}
+                  {!category.isDefault && (
+                    <>
+                      <EditCategoryDialog
+                        categoryId={category.id}
+                        name={category.name}
+                        initialIcon={category.icon}
+                        initialColor={category.color}
+                      />
+                      <DeleteCategoryButton categoryId={category.id} />
+                    </>
+                  )}
                 </Badge>
               </li>
             ))}

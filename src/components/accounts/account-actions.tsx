@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { IconRefresh, IconPigMoney, IconPlugOff } from "@tabler/icons-react";
 import {
@@ -19,16 +19,23 @@ export function AccountActions({
   canSync: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
       {canSync && (
         <Button
           size="sm"
           variant="secondary"
           disabled={isPending}
           className="gap-1.5"
-          onClick={() => startTransition(() => syncAccountNow(accountId))}
+          onClick={() =>
+            startTransition(async () => {
+              const result = await syncAccountNow(accountId);
+              setSyncError(result.error ?? null);
+            })
+          }
         >
           <IconRefresh size={14} stroke={1.5} />
           Sincronizar ahora
@@ -54,6 +61,8 @@ export function AccountActions({
         <IconPlugOff size={14} stroke={1.5} />
         Desconectar
       </Button>
+      </div>
+      {syncError && <p className="text-xs text-destructive">{syncError}</p>}
     </div>
   );
 }

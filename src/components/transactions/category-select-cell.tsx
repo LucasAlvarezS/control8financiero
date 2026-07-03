@@ -8,11 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { updateTransactionCategory } from "@/actions/transactions";
 
 interface Option {
   id: string;
   label: string;
+  icon?: string | null;
+  color?: string | null;
 }
 
 export function CategorySelectCell({
@@ -25,7 +28,7 @@ export function CategorySelectCell({
   categories: Option[];
 }) {
   const [isPending, startTransition] = useTransition();
-  const labelById = new Map(categories.map((c) => [c.id, c.label]));
+  const optionById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <Select
@@ -40,12 +43,22 @@ export function CategorySelectCell({
     >
       <SelectTrigger size="sm" className="w-full">
         <SelectValue placeholder="Sin categoría">
-          {(value) => (typeof value === "string" ? labelById.get(value) : undefined)}
+          {(value) => {
+            const option = typeof value === "string" ? optionById.get(value) : undefined;
+            if (!option) return undefined;
+            return (
+              <>
+                <CategoryIcon icon={option.icon} color={option.color} size={15} />
+                {option.label}
+              </>
+            );
+          }}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {categories.map((category) => (
           <SelectItem key={category.id} value={category.id}>
+            <CategoryIcon icon={category.icon} color={category.color} size={15} />
             {category.label}
           </SelectItem>
         ))}

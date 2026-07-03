@@ -54,13 +54,26 @@ export async function disconnectAccount(accountId: string) {
   revalidatePath("/accounts");
 }
 
-export async function syncAccountNow(accountId: string) {
+export async function syncAccountNow(accountId: string): Promise<{ error?: string }> {
   const userId = await requireUserId();
   const account = await prisma.financialAccount.findFirstOrThrow({
     where: { id: accountId, userId },
   });
-  await syncFinancialAccount(account.id);
+
+  if (account.status === "DISCONNECTED") {
+    return { error: "La cuenta está desconectada. Volvé a conectarla desde “Conectar cuenta”." };
+  }
+
+  try {
+    await syncFinancialAccount(account.id);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Error desconocido al sincronizar",
+    };
+  }
+
   revalidatePath("/accounts");
   revalidatePath("/transactions");
   revalidatePath("/");
+  return {};
 }

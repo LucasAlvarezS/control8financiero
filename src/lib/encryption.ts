@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "crypto";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
@@ -30,6 +30,13 @@ export function encrypt(plainText: string): string {
     authTag.toString("base64"),
     ciphertext.toString("base64"),
   ].join(":");
+}
+
+/** Compara dos strings hex en tiempo constante (firmas HMAC de webhooks). */
+export function timingSafeEqualHex(a: string, b: string): boolean {
+  const bufferA = Buffer.from(a, "hex");
+  const bufferB = Buffer.from(b, "hex");
+  return bufferA.length === bufferB.length && timingSafeEqual(bufferA, bufferB);
 }
 
 export function decrypt(payload: string): string {

@@ -15,6 +15,8 @@ export interface DiscoveredAccount {
   alias: string;
   currency: string;
   institution: Institution;
+  /** Saldo disponible, si el proveedor lo expone (Fintoc sí, Mercado Pago no). */
+  balance?: number | null;
 }
 
 export interface CredentialTokens {

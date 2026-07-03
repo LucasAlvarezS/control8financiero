@@ -100,9 +100,22 @@ export async function syncFinancialAccount(financialAccountId: string): Promise<
       if (result) imported += 1;
     }
 
+    // El saldo es best-effort: si el proveedor no lo expone o falla la
+    // consulta, el sync de movimientos sigue siendo válido.
+    let balanceData: { balance: number; balanceUpdatedAt: Date } | undefined;
+    try {
+      const discovered = await provider.listAccounts(tokens);
+      const match = discovered.find((d) => d.externalId === account.externalId);
+      if (match?.balance != null) {
+        balanceData = { balance: match.balance, balanceUpdatedAt: new Date() };
+      }
+    } catch {
+      // sin saldo esta vuelta
+    }
+
     await prisma.financialAccount.update({
       where: { id: account.id },
-      data: { lastSyncedAt: new Date(), status: "ACTIVE" },
+      data: { lastSyncedAt: new Date(), status: "ACTIVE", ...balanceData },
     });
 
     await prisma.syncLog.update({

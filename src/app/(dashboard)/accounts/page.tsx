@@ -63,7 +63,7 @@ export default async function AccountsPage() {
               <AccountActions
                 accountId={account.id}
                 isSavings={account.isSavings}
-                canSync={account.provider !== "MANUAL"}
+                canSync={account.provider !== "MANUAL" && account.status !== "DISCONNECTED"}
               />
             </CardContent>
           </Card>

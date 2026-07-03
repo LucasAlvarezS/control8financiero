@@ -4,27 +4,20 @@ import type {
   FinancialProvider,
   NormalizedMovement,
 } from "../provider.interface";
-import { finalizeLinkAndListAccounts, getMovements } from "./client";
-import { mapMovementToNormalized } from "./mapper";
-
-const INSTITUTION_BY_FINTOC_ID: Record<string, "BANCO_ESTADO" | "BANCO_DE_CHILE"> = {
-  cl_banco_estado: "BANCO_ESTADO",
-  cl_banco_de_chile: "BANCO_DE_CHILE",
-};
+import { getMovements, listAccounts } from "./client";
+import { mapAccountToDiscovered, mapMovementToNormalized } from "./mapper";
 
 export const fintocProvider: FinancialProvider = {
   provider: "FINTOC",
 
+  // La API de cuentas no incluye la institución (viene en el Link, que sólo
+  // se obtiene completo al canjear el exchange token en la conexión inicial),
+  // por eso acá se marca OTHER. El alta real de cuentas la hace el callback
+  // de conexión usando el Link canjeado, con la institución correcta.
   async listAccounts(tokens: CredentialTokens): Promise<DiscoveredAccount[]> {
     if (!tokens.linkToken) throw new Error("Falta link token de Fintoc");
-    const accounts = await finalizeLinkAndListAccounts(tokens.linkToken);
-
-    return accounts.map((account) => ({
-      externalId: account.id,
-      alias: account.official_name ?? account.name,
-      currency: account.currency,
-      institution: INSTITUTION_BY_FINTOC_ID[account.institution.id] ?? "OTHER",
-    }));
+    const accounts = await listAccounts(tokens.linkToken);
+    return accounts.map((account) => mapAccountToDiscovered(account, "OTHER"));
   },
 
   async syncMovements(

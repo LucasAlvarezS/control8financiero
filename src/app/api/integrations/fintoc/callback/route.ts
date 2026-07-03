@@ -2,31 +2,63 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
 import { requireUserId } from "@/lib/session";
-import { fintocProvider } from "@/lib/integrations/fintoc/sync";
+import { exchangeLinkIntent } from "@/lib/integrations/fintoc/client";
+import { mapInstitution } from "@/lib/integrations/fintoc/mapper";
 
 export async function POST(request: NextRequest) {
   const userId = await requireUserId();
-  const { linkToken, institution } = await request.json();
+  const { exchangeToken } = await request.json();
 
-  if (typeof linkToken !== "string") {
-    return NextResponse.json({ error: "Falta linkToken" }, { status: 400 });
+  if (typeof exchangeToken !== "string") {
+    return NextResponse.json({ error: "Falta exchangeToken" }, { status: 400 });
   }
 
-  const accounts = await fintocProvider.listAccounts({ linkToken });
+  // El link_token sólo viene en esta respuesta: se persiste cifrado.
+  const link = await exchangeLinkIntent(exchangeToken);
+  const institution = mapInstitution(link.institution.id);
 
   const created = [];
-  for (const account of accounts) {
-    if (institution && account.institution !== institution) continue;
+  for (const account of link.accounts ?? []) {
+    const alias = account.official_name ?? account.name;
+
+    // Evita duplicar cuentas al reconectar el mismo banco. Un link nuevo puede
+    // traer otro id de cuenta, por eso el fallback matchea por institución+alias
+    // (revive cuentas desconectadas conservando su historial de movimientos).
+    const existing =
+      (await prisma.financialAccount.findFirst({
+        where: { userId, provider: "FINTOC", externalId: account.id },
+      })) ??
+      (await prisma.financialAccount.findFirst({
+        where: { userId, provider: "FINTOC", institution, alias },
+      }));
+
+    if (existing) {
+      // upsert: "Desconectar" borra la credencial, así que puede no existir.
+      await prisma.integrationCredential.upsert({
+        where: { financialAccountId: existing.id },
+        update: { linkTokenEncrypted: encrypt(link.link_token) },
+        create: {
+          financialAccountId: existing.id,
+          provider: "FINTOC",
+          linkTokenEncrypted: encrypt(link.link_token),
+        },
+      });
+      await prisma.financialAccount.update({
+        where: { id: existing.id },
+        data: { status: "ACTIVE", externalId: account.id },
+      });
+      continue;
+    }
 
     const financialAccount = await prisma.financialAccount.create({
       data: {
         userId,
         provider: "FINTOC",
-        institution: account.institution,
-        externalId: account.externalId,
-        alias: account.alias,
+        institution,
+        externalId: account.id,
+        alias: account.official_name ?? account.name,
         currency: account.currency,
-        isSavings: account.institution === "BANCO_DE_CHILE",
+        isSavings: institution === "BANCO_DE_CHILE",
         status: "ACTIVE",
       },
     });
@@ -35,7 +67,7 @@ export async function POST(request: NextRequest) {
       data: {
         financialAccountId: financialAccount.id,
         provider: "FINTOC",
-        linkTokenEncrypted: encrypt(linkToken),
+        linkTokenEncrypted: encrypt(link.link_token),
       },
     });
 
